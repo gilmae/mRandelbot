@@ -1,7 +1,10 @@
 #!/usr/bin/ruby
 
 require 'YAML'
+require 'JSON'
 require 'fileutils'
+require 'aws-sdk'
+
 
 config_file = File.expand_path(File.dirname(__FILE__)) + '/.config'
 
@@ -32,7 +35,7 @@ result = `#{identify_location}/bin/identify -verbose #{filename}`
 
 g = result.scan(/standard deviation: (([3-9]\d)|(25)|([1-2]\d\d))/)
 
-if g.size < 0
+if g.size < 2
   `rm #{filename}`
 else
   exiftool_location = `brew --prefix exiftool`.chomp!
@@ -44,4 +47,21 @@ else
 
   `#{exiftool_location}/bin/exiftool -DigitalZoomRatio="#{zoom}" #{filename}`
   `#{exiftool_location}/bin/exiftool exiftool -delete_original! #{filename}`
+
+  sqs_credentials = Aws::Credentials.new(config["sqs"]["access_key"], config["sqs"]["secret_key"])
+  s3_credentials = Aws::Credentials.new(config["s3"]["access_key"], config["s3"]["secret_key"])
+
+  sqs = Aws::SQS::Client.new(region:  config["sqs"]["region"], credentials: sqs_credentials)
+
+  s3 = Aws::S3::Resource.new(region: config["s3"]["region"], credentials: s3_credentials)
+
+  get_queue_response = sqs.get_queue_url(queue_name: config["sqs"]["queue_name"])
+
+  key = filename.split("/").last
+  obj = s3.bucket(config["s3"]["bucket_name"]).object(key)
+  obj.upload_file(filename)
+
+  payload = {:key=>key, :real=>real, :imaginary=>imag, :zoom=>zoom}
+
+  sqs.send_message(queue_url: get_queue_response.queue_url, message_body: JSON.dump(payload))
 end
