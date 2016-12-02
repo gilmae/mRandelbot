@@ -1,5 +1,3 @@
-#!/usr/bin/ruby
-
 require 'YAML'
 require 'JSON'
 require 'fileutils'
@@ -30,23 +28,23 @@ filename = `#{config["mandelbrot"]} -r=#{real} -i=#{imag} -z=#{zoom} -c=smooth -
 filename.chomp!
 #p filename
 
-identify_location = `brew --prefix imagemagick`.chomp!
-result = `#{identify_location}/bin/identify -verbose #{filename}`
+identify_location = config["identify_path"]
+result = `#{identify_location} -verbose #{filename}`
 
 g = result.scan(/standard deviation: (([3-9]\d)|(25)|([1-2]\d\d))/)
 
 if g.size < 2
   `rm #{filename}`
 else
-  exiftool_location = `brew --prefix exiftool`.chomp!
-  `#{exiftool_location}/bin/exiftool -gps:GPSLongitude="#{real}" #{filename}`
-  `#{exiftool_location}/bin/exiftool -gps:GPSLongitudeRef="W" #{filename}` if real < 0
+  exiftool_location = config["exiftool_path"]
+  `#{exiftool_location} -gps:GPSLongitude="#{real}" #{filename}`
+  `#{exiftool_location} -gps:GPSLongitudeRef="W" #{filename}` if real < 0
 
-  `#{exiftool_location}/bin/exiftool -gps:GPSLatitude="#{imag}" #{filename}`
-  `#{exiftool_location}/bin/exiftool -gps:GPSLatitudeRef="S" file` if imag < 0
+  `#{exiftool_location} -gps:GPSLatitude="#{imag}" #{filename}`
+  `#{exiftool_location} -gps:GPSLatitudeRef="S" file` if imag < 0
 
-  `#{exiftool_location}/bin/exiftool -DigitalZoomRatio="#{zoom}" #{filename}`
-  `#{exiftool_location}/bin/exiftool exiftool -delete_original! #{filename}`
+  `#{exiftool_location} -DigitalZoomRatio="#{zoom}" #{filename}`
+  `#{exiftool_location} exiftool -delete_original! #{filename}`
 
   sqs_credentials = Aws::Credentials.new(config["sqs"]["access_key"], config["sqs"]["secret_key"])
   s3_credentials = Aws::Credentials.new(config["s3"]["access_key"], config["s3"]["secret_key"])
