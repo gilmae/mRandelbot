@@ -19,24 +19,6 @@ end
 
 base_path = config["images"]
 
-# the files we are interested in are in th format:
-#   mb_real_imaginary_zoom.[png/jpg]
-
-#mb_file_regex = /mb_([^_]+)_([^_]+)_([^_]+)\./
-
-#next_mb = Dir.entries(base_path).sort_by { |a| File.mtime(base_path + a) }.find do |a|
-#  mb_file_regex =~ a;
-#end
-
-#exit if next_mb.nil?
-
-#m = next_mb.match(mb_file_regex)
-
-#real = m.captures[0]
-#imaginary = m.captures[1]
-#zoom = m.captures[2]
-
-
 if !config["twitter"]
   p "Twitter configuration missing"
   exit
