@@ -26,9 +26,9 @@ Dir.mkdir(base_path)
 run_details = {}
 run_details["Date Ran"] = DateTime.now
 
-gradient = '[["0.0", "000764"],["0.0004096", "026bcb"],["0.074088", "edffff"],["0.265228015625", "ffaa00"],["0.652842546875", "000200"],["1.0","000764"]]'
+#gradient = '[["0.0", "000764"],["0.0004096", "026bcb"],["0.074088", "edffff"],["0.265228015625", "ffaa00"],["0.652842546875", "000200"],["1.0","000764"]]'
 #gradient = '[["0.0", "ff0000"],["0.16", "ff7f00"],["0.33", "ffff00"],["0.5", "00ff00"],["0.66", "0000ff"],["0.83", "4b0082"],["1.0","9400d3"]]'
-#gradient = `#{config["gradient"]}`.chomp
+gradient = `#{config["gradient"]}`.chomp
 
 run_details[:gradient] = gradient
 
@@ -73,7 +73,7 @@ run_details["points"] = []
 
   run_details["points"] << {zoom: zoom, coords: coords}
 
-  result = `mandelbrot -mode=edge -w=1000 -h=1000 -z=#{zoom} -r=#{coords[0].strip} -i=#{coords[1].strip}`.chomp
+  result = `#{config["mandelbrot"]} -mode=edge -w=1000 -h=1000 -z=#{zoom} -r=#{coords[0].strip} -i=#{coords[1].strip}`.chomp
 
   parsed_coords  = result.scan(coords_regex)
 
@@ -84,7 +84,7 @@ run_details["points"] = []
 
   next if zoom < 50
 
-  filename = `mandelbrot -z=#{zoom} -r=#{coords[0].strip} -i=#{coords[1].strip} -c=true -o=#{base_path} -g='#{gradient}'`.chomp
+  filename = `#{config["mandelbrot"]} -z=#{zoom} -r=#{coords[0].strip} -i=#{coords[1].strip} -c=true -o=#{base_path} -g='#{gradient}'`.chomp
 
   add_meta_data filename, config, coords[0], coords[1], zoom
   upload_to_aws filename, config, coords[0], coords[1], zoom
