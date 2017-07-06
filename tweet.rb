@@ -67,7 +67,7 @@ client = Twitter::REST::Client.new do |twitter|
  end
 
 File.open(filepath, "r") do |file|
-  client.update_with_media("#{payload["real"]} + #{payload["imaginary"]}i at zoom #{payload["zoom"]}", file, {:lat=>payload["imaginary"], :long=>payload["real"], :display_coordinates=>'true'})
+  client.update_with_media("#{payload["real"]} + #{payload["imaginary"]}i at zoom #{payload["zoom"]}. #{payload["album"] || ""}", file, {:lat=>payload["imaginary"], :long=>payload["real"], :display_coordinates=>'true'})
 end
 
 FileUtils.rm(filepath)
