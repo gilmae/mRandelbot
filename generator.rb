@@ -20,12 +20,14 @@ if !config
 end
 
 base_path = config["images"]
+run_date = DateTime.now
+run_name = run_date.strftime("%Y%m%d%H%M%S")
 
-base_path = File.join(base_path, DateTime.now.strftime("%Y%m%d%H%M%S"))
+base_path = File.join(base_path, run_name)
 Dir.mkdir(base_path)
 
 run_details = {}
-run_details["Date Ran"] = DateTime.now
+run_details["RunAt"] = run_date
 
 gradient = `#{config["gradient"]}`.chomp
 
@@ -75,7 +77,7 @@ zoom = 1
 coords_regex = /([-+]?\d\.\d+(?:[eE][+-]\d{2,3})),\s*([-+]?\d\.\d+(?:[eE][+-]\d{2,3}))/
 
 run_details["points"] = []
-(1..20).each {|i|
+(1..4).each {|i|
 
   run_details["points"] << {zoom: zoom, coords: coords}
 
@@ -97,6 +99,6 @@ run_details["points"] = []
 
 }
 
-File.open(File.join(base_path, "run_details.json"), 'w') do|f|
+File.open(File.join(base_path, "#{run_name}.json"), 'w') do|f|
   f.write(run_details.to_json)
 end
