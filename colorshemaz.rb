@@ -1,5 +1,7 @@
 require 'rmagick'
 require 'twitter'
+require "open-uri"
+require 'YAML'
 
 config_file = File.expand_path(File.dirname(__FILE__)) + '/.config'
 
@@ -22,13 +24,19 @@ client = Twitter::REST::Client.new do |twitter|
  end
 
 # Get most recent tweet
-client.user_timeline("colorschemez").first.id
+tweet =  client.status(client.user_timeline("colorschemez").first.id)
 
 # Get media and download
+media_url = tweet.media[0].media_url.to_s
 
 # build gradient from the image
+file = "/tmp/1.png"
+File.open(file, 'wb') do |fo|
+  fo.write open(media_url).read
+end
 
 # generate plot
+
 
 # tweet
 
@@ -39,7 +47,7 @@ end
 def to_hex i
    return (i/256).to_s(16).rjust(2, "0")
 end
-img = Magick::ImageList.new(ARGV[0]).first
+img = Magick::ImageList.new(file).first
 
 first_row = img.get_pixels(0,0,img.columns,1)
 first_col = img.get_pixels(0,0,1,img.rows)
@@ -64,3 +72,7 @@ pixels.each.with_index do |pixel,i|
 end
 
 p stops
+
+result = `#{config["mandelbrot"]} -w=1000 -h=1000 -c=true  -g='#{stops}'`.chomp
+
+p result
