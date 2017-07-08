@@ -79,7 +79,7 @@ zoom = 1
 coords_regex = /([-+]?\d\.\d+(?:[eE][+-]\d{2,3})),\s*([-+]?\d\.\d+(?:[eE][+-]\d{2,3}))/
 
 run_details["points"] = []
-(1..4).each {|i|
+(1..config["depth"].to_i).each {|i|
 
 
   result = `#{config["mandelbrot"]} -mode=edge -w=1000 -h=1000 -z=#{zoom} -r=#{coords[0].strip} -i=#{coords[1].strip}`.chomp
