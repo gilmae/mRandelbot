@@ -4,49 +4,31 @@ require 'fileutils'
 require 'aws-sdk'
 require 'date'
 require 'digest/sha1'
+require './mRandelbot'
+require './album'
 
+m = Mrandelbot.new
+a = m.create_album
 
-config_file = File.expand_path(File.dirname(__FILE__)) + '/.config'
-
-if File.exists? config_file
-  config = File.open(config_file, 'r') do|f|
-    config = YAML.load(f.read)
-  end
-end
-
-if !config
-  p "Missing config file"
-  exit
-end
-
-base_path = config["images"]
-run_date = DateTime.now
-run_name = run_date.strftime("%Y%m%d%H%M%S")
-
-base_path = File.join(base_path, run_name)
+base_path = File.join(m.base_path, a[:album])
 Dir.mkdir(base_path)
 
-run_details = {}
-run_details["RunAt"] = run_date
-
-gradient = `#{config["gradient"]}`.chomp
+gradient = m.generate_gradient
+a[:gradient] = gradient
 
 # Always print the gradient in case I was doing a test run and the gradient happens to also be awesome - which has happened a lot
-p gradient
+p gradient if m.config["mode"] == "DEV"
 
-run_details[:gradient] = gradient
-album = Digest::SHA1.base64digest(gradient)
+def add_meta_data filename, exiftool, real, imag, zoom
 
-def add_meta_data filename, config, real, imag, zoom
-  exiftool_location = config["exiftool_path"]
-  `#{exiftool_location} -gps:GPSLongitude="#{real}" #{filename}`
-  `#{exiftool_location} -gps:GPSLongitudeRef="W" #{filename}` if real.to_f < 0
+  `#{exiftool} -gps:GPSLongitude="#{real}" #{filename}`
+  `#{exiftool} -gps:GPSLongitudeRef="W" #{filename}` if real.to_f < 0
 
-  `#{exiftool_location} -gps:GPSLatitude="#{imag}" #{filename}`
-  `#{exiftool_location} -gps:GPSLatitudeRef="S" file` if imag.to_f < 0
+  `#{exiftool} -gps:GPSLatitude="#{imag}" #{filename}`
+  `#{exiftool} -gps:GPSLatitudeRef="S" file` if imag.to_f < 0
 
-  `#{exiftool_location} -DigitalZoomRatio="#{zoom}" #{filename}`
-  `#{exiftool_location} exiftool -delete_original! #{filename}`
+  `#{exiftool} -DigitalZoomRatio="#{zoom}" #{filename}`
+  `#{exiftool} exiftool -delete_original! #{filename}`
 end
 
 def upload_to_aws filename, config, real, imag, zoom, album
@@ -78,11 +60,8 @@ zoom = 1
 
 coords_regex = /([-+]?\d\.\d+(?:[eE][+-]\d{2,3})),\s*([-+]?\d\.\d+(?:[eE][+-]\d{2,3}))/
 
-run_details["points"] = []
-(1..config["depth"].to_i).each {|i|
-
-
-  result = `#{config["mandelbrot"]} -mode=edge -w=1000 -h=1000 -z=#{zoom} -r=#{coords[0].strip} -i=#{coords[1].strip}`.chomp
+(1..m.config["depth"].to_i).each {|i|
+  result = `#{m.config["mandelbrot"]} -mode=edge -w=1000 -h=1000 -z=#{zoom} -r=#{coords[0].strip} -i=#{coords[1].strip}`.chomp
 
   parsed_coords  = result.scan(coords_regex)
 
@@ -93,14 +72,14 @@ run_details["points"] = []
 
   next if zoom < 50
 
-  filename = `#{config["mandelbrot"]} -z=#{zoom} -r=#{coords[0].strip} -i=#{coords[1].strip} -c=true -o=#{base_path} -g='#{gradient}'`.chomp
+  filename = `#{m.config["mandelbrot"]} -z=#{zoom} -r=#{coords[0].strip} -i=#{coords[1].strip} -c=true -o=#{base_path} -g='#{gradient}'`.chomp
 
-  add_meta_data filename, config, coords[0], coords[1], zoom
-  key = upload_to_aws filename, config, coords[0], coords[1], zoom, album
+  add_meta_data filename, m.config["exiftool_path"], coords[0], coords[1], zoom
+  key = upload_to_aws filename, m.config, coords[0], coords[1], zoom, a[:album]
 
-  run_details["points"] << {zoom: zoom, coords: coords, key: key}
+  a[:points] << {zoom: zoom, coords: coords, key: key}
 }
 
-File.open(File.join(base_path, "#{run_name}.json"), 'w') do|f|
-  f.write(run_details.to_json)
+File.open(File.join(base_path, "#{a[:album]}.json"), 'w') do|f|
+  f.write(a.to_json)
 end
