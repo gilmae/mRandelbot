@@ -5,7 +5,6 @@ require 'aws-sdk'
 require 'date'
 require 'digest/sha1'
 require './mRandelbot'
-require './album'
 
 m = Mrandelbot.new
 a = m.create_album
