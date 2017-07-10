@@ -30,20 +30,22 @@ def add_meta_data filename, exiftool, real, imag, zoom
   `#{exiftool} exiftool -delete_original! #{filename}`
 end
 
-def upload_to_aws filename, config, real, imag, zoom, album
-  sqs_credentials = Aws::Credentials.new(config["sqs"]["access_key"], config["sqs"]["secret_key"])
-  s3_credentials = Aws::Credentials.new(config["s3"]["access_key"], config["s3"]["secret_key"])
+def upload_to_aws filename, access_key, secret_key, region, bucket
+  s3_credentials = Aws::Credentials.new(access_key, secret_key)
 
-  sqs = Aws::SQS::Client.new(region:  config["sqs"]["region"], credentials: sqs_credentials)
-
-  s3 = Aws::S3::Resource.new(region: config["s3"]["region"], credentials: s3_credentials)
-
-  get_queue_response = sqs.get_queue_url(queue_name: config["sqs"]["queue_name"])
+  s3 = Aws::S3::Resource.new(region: region, credentials: s3_credentials)
 
   key = filename.split("/").last
-  obj = s3.bucket(config["s3"]["bucket_name"]).object(key)
+  obj = s3.bucket(bucket).object(key)
 
   obj.upload_file(filename) if config["mode"] != "DEV"
+end
+
+def queue_message key, config, real, imag, zoom, album
+  sqs_credentials = Aws::Credentials.new(config["sqs"]["access_key"], config["sqs"]["secret_key"])
+  sqs = Aws::SQS::Client.new(region:  config["sqs"]["region"], credentials: sqs_credentials)
+  get_queue_response = sqs.get_queue_url(queue_name: config["sqs"]["queue_name"])
+
 
   payload = {:key=>key, :real=>real, :imaginary=>imag, :zoom=>zoom, :album=>album}
 
@@ -74,11 +76,15 @@ coords_regex = /([-+]?\d\.\d+(?:[eE][+-]\d{2,3})),\s*([-+]?\d\.\d+(?:[eE][+-]\d{
   filename = `#{m.config["mandelbrot"]} -z=#{zoom} -r=#{coords[0].strip} -i=#{coords[1].strip} -c=true -o=#{base_path} -g='#{gradient}'`.chomp
 
   add_meta_data filename, m.config["exiftool_path"], coords[0], coords[1], zoom
-  key = upload_to_aws filename, m.config, coords[0], coords[1], zoom, a[:album]
+  key = upload_to_aws filename, m.config["s3"]["access_key"], m.config["s3"]["secret_key"], m.config["s3"]["region"], m.config["s3"]["bucket_name"]
+  key = queue_message key, m.config, coords[0], coords[1], zoom, a[:album]
 
   a[:points] << {zoom: zoom, coords: coords, key: key}
 }
 
-File.open(File.join(base_path, "#{a[:album]}.json"), 'w') do|f|
+results_file_path = File.join(base_path, "#{a[:album]}.json")
+File.open(results_file_path, 'w') do|f|
   f.write(a.to_json)
 end
+
+#upload_to_aws results_file_path, m.config["s3"]["access_key"], m.config["s3"]["secret_key"], m.config["s3"]["region"], m.config["s3"]["site_bucket_name"]
