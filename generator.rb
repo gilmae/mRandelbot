@@ -38,7 +38,11 @@ def upload_to_aws filename, access_key, secret_key, region, bucket
   key = filename.split("/").last
   obj = s3.bucket(bucket).object(key)
 
-  obj.upload_file(filename) if config["mode"] != "DEV"
+  obj.upload_file(filename, {:acl=>"public-read"})
+
+  p key
+  p "file uploaded"
+  key
 end
 
 def queue_message key, config, real, imag, zoom, album
@@ -46,14 +50,9 @@ def queue_message key, config, real, imag, zoom, album
   sqs = Aws::SQS::Client.new(region:  config["sqs"]["region"], credentials: sqs_credentials)
   get_queue_response = sqs.get_queue_url(queue_name: config["sqs"]["queue_name"])
 
-
   payload = {:key=>key, :real=>real, :imaginary=>imag, :zoom=>zoom, :album=>album}
 
   sqs.send_message(queue_url: get_queue_response.queue_url, message_body: JSON.dump(payload)) if config["mode"] != "DEV"
-
-  p JSON.dump(payload) if config["mode"] == "DEV"
-
-  key
 end
 
 coords = ["-0.75", "0"]
@@ -74,10 +73,11 @@ coords_regex = /([-+]?\d\.\d+(?:[eE][+-]\d{2,3})),\s*([-+]?\d\.\d+(?:[eE][+-]\d{
   next if zoom < 50
 
   filename = `#{m.config["mandelbrot"]} -z=#{zoom} -r=#{coords[0].strip} -i=#{coords[1].strip} -c=true -o=#{base_path} -g='#{gradient}'`.chomp
-
   add_meta_data filename, m.config["exiftool_path"], coords[0], coords[1], zoom
-  key = upload_to_aws filename, m.config["s3"]["access_key"], m.config["s3"]["secret_key"], m.config["s3"]["region"], m.config["s3"]["bucket_name"]
-  key = queue_message key, m.config, coords[0], coords[1], zoom, a[:album]
+  if m.config["mode"] != "DEV"
+    key = upload_to_aws filename, m.config["s3"]["access_key"], m.config["s3"]["secret_key"], m.config["s3"]["region"], m.config["s3"]["bucket_name"]
+    queue_message key, m.config, coords[0], coords[1], zoom, a[:album]
+  end
 
   a[:points] << {zoom: zoom, coords: coords, key: key}
 }
@@ -87,4 +87,4 @@ File.open(results_file_path, 'w') do|f|
   f.write(a.to_json)
 end
 
-#upload_to_aws results_file_path, m.config["s3"]["access_key"], m.config["s3"]["secret_key"], m.config["s3"]["region"], m.config["s3"]["site_bucket_name"]
+upload_to_aws results_file_path, m.config["s3"]["access_key"], m.config["s3"]["secret_key"], m.config["s3"]["region"], m.config["s3"]["site_bucket_name"]
