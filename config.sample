@@ -21,3 +21,4 @@ s3:
   secret_key: YOUR_S3_SECRET_KEY
   bucket_name: BUCKET_FOR_IMAGES
   posted_folder: PATH_FOR_POSTED_IMAGES
+  site_bucket_name: PATH_FOR_RESULTS_JSON
