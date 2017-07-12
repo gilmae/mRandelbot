@@ -4,7 +4,7 @@ require 'fileutils'
 require 'aws-sdk'
 require 'date'
 require 'digest/sha1'
-require './mRandelbot'
+require File.expand_path(File.dirname(__FILE__)) + '/mRandelbot'
 
 m = Mrandelbot.new
 a = m.create_album
