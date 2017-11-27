@@ -87,4 +87,7 @@ File.open(results_file_path, 'w') do|f|
   f.write(a.to_json)
 end
 
-upload_to_aws results_file_path, m.config["s3"]["access_key"], m.config["s3"]["secret_key"], m.config["s3"]["region"], m.config["s3"]["site_bucket_name"]
+if m.config["mode"] != "DEV"
+  key = upload_to_aws filename, m.con
+  upload_to_aws results_file_path, m.config["s3"]["access_key"], m.config["s3"]["secret_key"], m.config["s3"]["region"], m.config["s3"]["site_bucket_name"]
+end if
