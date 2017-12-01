@@ -1,2 +1,5 @@
 .config
 Gemfile.lock
+scratch.markdown
+archive
+current.album
