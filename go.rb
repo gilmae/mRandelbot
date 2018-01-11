@@ -66,7 +66,7 @@ base_path = File.join(m.base_path, a[:album])
 
 Dir.mkdir(base_path) if !Dir.exists?(base_path)
 
-plot = a[:points].sort{|a,b| a["zoom"] <=> b["zoom"]}.last
+plot = a[:points].sort{|p1,p2| p1["createdAt"] <=> p2["createdAt"]}.last
 real, imaginary, zoom = nil
 if !plot
     real, imaginary, zoom = seed_points_up_to m, 50
@@ -75,16 +75,14 @@ else
     z = plot["zoom"]
     r = plot["coords"][0]
     i = plot["coords"][1]
-    zoom = z * rand() * 4 + 2
+    zoom = z.to_f * (rand() * 4 + 2)
     real, imaginary = get_a_point m, r, i, zoom
 end
 
-plot = {zoom: zoom, coords: [real, imaginary], published: false}
-a[:points] << plot
-m.save_album a
+plot = {zoom: zoom, coords: [real, imaginary], published: false, createdAt: DateTime.now.strftime("%Y%m%d%H%M%S")}
 
 filename = `#{m.config["mandelbrot"]} -z=#{zoom} -r=#{real} -i=#{imaginary} -c=true -o=#{base_path} -g='#{a[:gradient]}'`.chomp
-a[:points].last[:filename] = filename
+plot[:filename] = filename
 m.save_album a
 
 add_meta_data filename, m.config["exiftool_path"], real, imaginary, zoom
@@ -99,12 +97,13 @@ if m.config["mode"] != "DEV"
  
     File.open(filename, "r") do |file|
         tweet = client.update_with_media("#{real} + #{imaginary}i at zoom #{zoom}", file, {:lat=>imaginary, :long=>real, :display_coordinates=>'true'})
-        a[:points].last[:tweet] = tweet.id
+        plot[:tweet] = tweet.id
         m.save_album a
     end
 end
 
-a[:points].last[:published] = true
+plot[:published] = true
+a[:points] << plot
 m.save_album a
 
 
