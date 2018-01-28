@@ -5,27 +5,12 @@ require 'fileutils'
 #require 'aws-sdk'
 require 'date'
 require 'digest/sha1'
+require "slack-ruby-client"
 require File.expand_path(File.dirname(__FILE__)) + '/mRandelbot'
 
 
 COORDS_REGEX = /([-+]?\d\.\d+(?:[eE][+-]\d{2,3})),\s*([-+]?\d\.\d+(?:[eE][+-]\d{2,3}))/
 
-=begin
-JIT generation and publishing
-
-# Read current runsheet
-# If none found, start a new one
-# Get last plot. If none, generate a seed
-# If last plot was unpublished, publish, save run sheet, and quit
-# Perform edge plot and and randomly zoom
-# Update run sheet with new coordinates
-# Save run sheet
-# Publish
-# Update run sheet as published
-# Save run sheet
-# Quit
-
-=end
 def seed_points_up_to m, seed_until
     r = -0.75
     i = 0
@@ -71,12 +56,18 @@ real, imaginary, zoom = nil
 if !plot
     real, imaginary, zoom = seed_points_up_to m, 50
 else
-    p plot
     z = plot["zoom"]
     r = plot["coords"][0]
     i = plot["coords"][1]
     zoom = z.to_f * (rand() * 4 + 2)
     real, imaginary = get_a_point m, r, i, zoom
+end
+
+if zoom > 10**14 # arbitrarily chosen max zoom level based on trial and error
+    m.archive_album a
+    a = m.get_album
+    Dir.mkdir(base_path) if !Dir.exists?(base_path)
+    real, imaginary, zoom = seed_points_up_to m, 50
 end
 
 plot = {zoom: zoom, coords: [real, imaginary], published: false, createdAt: DateTime.now.strftime("%Y%m%d%H%M%S")}
@@ -87,19 +78,32 @@ m.save_album a
 
 add_meta_data filename, m.config["exiftool_path"], real, imaginary, zoom
 
+Slack.configure do |slack|
+    slack.token = m.config["slack"]["token"]
+end
+
+client = Slack::Web::Client.new
+
+client.files_upload(
+  channels: '#logs',
+  as_user: true,
+  file: Faraday::UploadIO.new(filename, 'image/jpeg'),
+  title: "#{real} + #{imaginary}i at zoom #{zoom}",
+  filename: filename,
+)
 if m.config["mode"] != "DEV"
-    client = Twitter::REST::Client.new do |twitter|
-        twitter.consumer_key = m.config["twitter"]["CONSUMER_KEY"]
-        twitter.consumer_secret = m.config["twitter"]["CONSUMER_SECRET"]
-        twitter.access_token = m.config["twitter"]["OAUTH_TOKEN"]
-        twitter.access_token_secret = m.config["twitter"]["OAUTH_TOKEN_SECRET"]
-    end
+    # client = Twitter::REST::Client.new do |twitter|
+    #     twitter.consumer_key = m.config["twitter"]["CONSUMER_KEY"]
+    #     twitter.consumer_secret = m.config["twitter"]["CONSUMER_SECRET"]
+    #     twitter.access_token = m.config["twitter"]["OAUTH_TOKEN"]
+    #     twitter.access_token_secret = m.config["twitter"]["OAUTH_TOKEN_SECRET"]
+    # end
  
-    File.open(filename, "r") do |file|
-        tweet = client.update_with_media("#{real} + #{imaginary}i at zoom #{zoom}", file, {:lat=>imaginary, :long=>real, :display_coordinates=>'true'})
-        plot[:tweet] = tweet.id
-        m.save_album a
-    end
+    # File.open(filename, "r") do |file|
+    #     tweet = client.update_with_media("#{real} + #{imaginary}i at zoom #{zoom}", file, {:lat=>imaginary, :long=>real, :display_coordinates=>'true'})
+    #     plot[:tweet] = tweet.id
+    #     m.save_album a
+    # end
 end
 
 plot[:published] = true

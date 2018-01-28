@@ -31,6 +31,20 @@ class Mrandelbot
      end
    end
 
+   def save_album runsheet
+    album_file = File.expand_path(File.dirname(__FILE__)) + '/current.album'
+    File.open(album_file, 'w') do|f|
+      f.write(runsheet.to_json)
+    end
+   end
+
+   def archive_album runsheet
+    album_file = File.expand_path(File.dirname(__FILE__)) + '/current.album'
+    archived_album_file = File.expand_path(File.dirname(__FILE__)) + '/' + runsheet[:album] + '.album'
+
+    File.rename(album_file, archived_album_file)
+   end
+
    def create_album
      {run_at: DateTime.now, album: DateTime.now.strftime("%Y%m%d%H%M%S"), points: [], gradient: generate_gradient}
    end
@@ -49,10 +63,5 @@ class Mrandelbot
     
   end
    
-   def save_album runsheet
-    album_file = File.expand_path(File.dirname(__FILE__)) + '/current.album'
-    File.open(album_file, 'w') do|f|
-      f.write(runsheet.to_json)
-    end
-   end
+  
 end
