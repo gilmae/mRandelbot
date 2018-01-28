@@ -88,7 +88,7 @@ client.files_upload(
   channels: '#logs',
   as_user: true,
   file: Faraday::UploadIO.new(filename, 'image/jpeg'),
-  title: "#{real} + #{imaginary}i at zoom #{zoom}",
+  title: "#{real} + #{imaginary}i at zoom #{'%.10e' % zoom}",
   filename: filename,
 )
 if m.config["mode"] != "DEV"
@@ -100,7 +100,7 @@ if m.config["mode"] != "DEV"
     # end
  
     # File.open(filename, "r") do |file|
-    #     tweet = client.update_with_media("#{real} + #{imaginary}i at zoom #{zoom}", file, {:lat=>imaginary, :long=>real, :display_coordinates=>'true'})
+    #     tweet = client.update_with_media("#{real} + #{imaginary}i at zoom #{'%.10e' % zoom}", file, {:lat=>imaginary, :long=>real, :display_coordinates=>'true'})
     #     plot[:tweet] = tweet.id
     #     m.save_album a
     # end
