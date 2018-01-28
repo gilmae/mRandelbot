@@ -92,18 +92,18 @@ client.files_upload(
   filename: filename,
 )
 if m.config["mode"] != "DEV"
-    # client = Twitter::REST::Client.new do |twitter|
-    #     twitter.consumer_key = m.config["twitter"]["CONSUMER_KEY"]
-    #     twitter.consumer_secret = m.config["twitter"]["CONSUMER_SECRET"]
-    #     twitter.access_token = m.config["twitter"]["OAUTH_TOKEN"]
-    #     twitter.access_token_secret = m.config["twitter"]["OAUTH_TOKEN_SECRET"]
-    # end
+    client = Twitter::REST::Client.new do |twitter|
+        twitter.consumer_key = m.config["twitter"]["CONSUMER_KEY"]
+        twitter.consumer_secret = m.config["twitter"]["CONSUMER_SECRET"]
+        twitter.access_token = m.config["twitter"]["OAUTH_TOKEN"]
+        twitter.access_token_secret = m.config["twitter"]["OAUTH_TOKEN_SECRET"]
+    end
  
-    # File.open(filename, "r") do |file|
-    #     tweet = client.update_with_media("#{real} + #{imaginary}i at zoom #{'%.10e' % zoom}", file, {:lat=>imaginary, :long=>real, :display_coordinates=>'true'})
-    #     plot[:tweet] = tweet.id
-    #     m.save_album a
-    # end
+    File.open(filename, "r") do |file|
+        tweet = client.update_with_media("#{real} + #{imaginary}i at zoom #{'%.10e' % zoom}", file, {:lat=>imaginary, :long=>real, :display_coordinates=>'true'})
+        plot[:tweet] = tweet.id
+        m.save_album a
+    end
 end
 
 plot[:published] = true

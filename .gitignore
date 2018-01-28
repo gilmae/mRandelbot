@@ -2,4 +2,4 @@
 Gemfile.lock
 scratch.markdown
 archive
-current.album
+*.album
