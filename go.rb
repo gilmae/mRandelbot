@@ -28,8 +28,8 @@ end
 def get_a_point m, real, imaginary, zoom
     result = `#{m.config["mandelbrot"]} -mode=edge -w=1000 -h=1000 -z=#{zoom} -r=#{real} -i=#{imaginary}`.chomp
     parsed_coords  = result.scan(COORDS_REGEX)[0]
-    return nil, nil if parsed_coords == nil
-    return parsed_coords[0], parsed_coords[1]
+    
+    return (parsed_coords[0], parsed_coords[1]) if COORDS_REGEX.match(parsed_coords)
 end
 
 def add_meta_data filename, exiftool, real, imag, zoom
