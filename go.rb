@@ -28,6 +28,7 @@ end
 def get_a_point m, real, imaginary, zoom
     result = `#{m.config["mandelbrot"]} -mode=edge -w=1000 -h=1000 -z=#{zoom} -r=#{real} -i=#{imaginary}`.chomp
     parsed_coords  = result.scan(COORDS_REGEX)[0]
+    return nil, nil if parsed_coords = nil
     return parsed_coords[0], parsed_coords[1]
 end
 
@@ -59,11 +60,14 @@ else
     z = plot["zoom"]
     r = plot["coords"][0]
     i = plot["coords"][1]
-    zoom = z.to_f * (rand() * 4 + 2)
+    
     real, imaginary = get_a_point m, r, i, zoom
+    zoom = z.to_f * (rand() * 4 + 2)
 end
 
-if zoom > 10**14 # arbitrarily chosen max zoom level based on trial and error
+# max zoom level arbitrarily chosen max zoom level based on trial and error
+# nil real implies no point was returned because no edge point exists
+if zoom > 10**14 || real == nil 
     m.archive_album a
     a = m.get_album
     Dir.mkdir(base_path) if !Dir.exists?(base_path)
