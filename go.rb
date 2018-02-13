@@ -70,7 +70,8 @@ end
 
 # max zoom level arbitrarily chosen max zoom level based on trial and error
 # nil real implies no point was returned because no edge point exists
-if zoom > 10**14 || real == nil 
+if zoom > 10**14 || real == nil
+    
     m.archive_album a
     a = m.get_album
     Dir.mkdir(base_path) if !Dir.exists?(base_path)
