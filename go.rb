@@ -28,8 +28,11 @@ end
 def get_a_point m, real, imaginary, zoom
     result = `#{m.config["mandelbrot"]} -mode=edge -w=1000 -h=1000 -z=#{zoom} -r=#{real} -i=#{imaginary}`.chomp
     parsed_coords  = result.scan(COORDS_REGEX)[0]
-    
-    return (parsed_coords[0], parsed_coords[1]) if COORDS_REGEX.match(parsed_coords)
+    if COORDS_REGEX.match(result)
+        return parsed_coords[0], parsed_coords[1] 
+    end
+
+    return nil, nil
 end
 
 def add_meta_data filename, exiftool, real, imag, zoom
@@ -61,7 +64,7 @@ else
     r = plot["coords"][0]
     i = plot["coords"][1]
     
-    real, imaginary = get_a_point m, r, i, zoom
+    real, imaginary = get_a_point m, r, i, z
     zoom = z.to_f * (rand() * 4 + 2)
 end
 
