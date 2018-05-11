@@ -40,7 +40,7 @@ class Mrandelbot
 
    def archive_album runsheet
     album_file = File.expand_path(File.dirname(__FILE__)) + '/current.album'
-    archived_album_file = File.expand_path(File.dirname(__FILE__)) + '/' + runsheet[:album] + '.album'
+    archived_album_file = File.expand_path(File.dirname(__FILE__)) + '/' + runsheet[:album] + '.album.archived'
 
     File.rename(album_file, archived_album_file)
    end

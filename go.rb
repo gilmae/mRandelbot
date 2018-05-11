@@ -10,6 +10,7 @@ require File.expand_path(File.dirname(__FILE__)) + '/mRandelbot'
 
 
 COORDS_REGEX = /([-+]?\d\.\d+(?:[eE][+-]\d{2,3})),\s*([-+]?\d\.\d+(?:[eE][+-]\d{2,3}))/
+PIXEL_COORDS_REGEX = /(\d+),(\d+)/
 
 def seed_points_up_to m, seed_until
     r = -0.75
@@ -26,10 +27,16 @@ def seed_points_up_to m, seed_until
 end
 
 def get_a_point m, real, imaginary, zoom
-    result = `#{m.config["mandelbrot"]} -mode=edge -w=1000 -h=1000 -z=#{zoom} -r=#{real} -i=#{imaginary}`.chomp
-    parsed_coords  = result.scan(COORDS_REGEX)[0]
-    if COORDS_REGEX.match(result)
-        return parsed_coords[0], parsed_coords[1] 
+    result = `#{m.config["mandelbrot"]} -o=#{m.base_path} -f=tmp.jpg -z=#{zoom} -r=#{real} -i=#{imaginary}`.chomp
+    pixels = `convert #{result} -canny 0x1+10%+30% -write TXT:- | grep "#FFF" | gshuf -n 1 | awk -F':' '{print $1}'`.chomp
+   
+    if PIXEL_COORDS_REGEX.match(pixels)
+        parsed_pixels  = pixels.scan(PIXEL_COORDS_REGEX)[0]
+        coords = `#{m.config["mandelbrot"]} -mode=coordsAt -z=#{zoom} -r=#{real} -i=#{imaginary} -x=#{parsed_pixels[0]} -y=#{parsed_pixels[1]}`.chomp
+        if COORDS_REGEX.match(coords)
+            parsed_coords = coords.scan(COORDS_REGEX)[0]
+            return parsed_coords[0], parsed_coords[1] 
+        end
     end
 
     return nil, nil
@@ -47,6 +54,10 @@ def add_meta_data filename, exiftool, real, imag, zoom
       `#{exiftool} exiftool -delete_original! #{filename}`
 end
 
+def get_most_recent_point album
+    return album[:points].sort{|p1,p2| p1["createdAt"] <=> p2["createdAt"]}.last
+end
+
 m = Mrandelbot.new
 
 a = m.get_album
@@ -55,14 +66,15 @@ base_path = File.join(m.base_path, a[:album])
 
 Dir.mkdir(base_path) if !Dir.exists?(base_path)
 
-plot = a[:points].sort{|p1,p2| p1["createdAt"] <=> p2["createdAt"]}.last
+last_plot = get_most_recent_point(a)
+
 real, imaginary, zoom = nil
-if !plot
+if !last_plot
     real, imaginary, zoom = seed_points_up_to m, 50
 else
-    z = plot["zoom"]
-    r = plot["coords"][0]
-    i = plot["coords"][1]
+    z = last_plot["zoom"]
+    r = last_plot["coords"][0]
+    i = last_plot["coords"][1]
     
     real, imaginary = get_a_point m, r, i, z
     zoom = z.to_f * (rand() * 4 + 2)
