@@ -10,9 +10,6 @@ class Mrandelbot
      @base_path = config["images"]
    end
 
-   def generate_gradient
-      `#{config["gradient"]}`.chomp
-   end
 
    def read_config
      config_file = File.expand_path(File.dirname(__FILE__)) + '/.config'
@@ -30,16 +27,4 @@ class Mrandelbot
        exit
      end
    end
-
-
-
-
-
-
-
-
-   
-  
 end
-
-

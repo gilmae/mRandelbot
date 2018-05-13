@@ -8,6 +8,7 @@ require 'digest/sha1'
 require "slack-ruby-client"
 require File.expand_path(File.dirname(__FILE__)) + '/mRandelbot'
 require File.expand_path(File.dirname(__FILE__)) + '/albums'
+require File.expand_path(File.dirname(__FILE__)) + '/gradient_gen'
 
 include Albums
 
@@ -16,6 +17,7 @@ PIXEL_COORDS_REGEX = /(\d+),(\d+)/
 
 def generate_image m, next_point, album
     album_base_path = get_album_base_path(m, album)
+    p "#{m.config["mandelbrot"]} -z=#{next_point[:zoom]} -r=#{next_point[:coords][0]} -i=#{next_point[:coords][1]} -c=true -o=#{album_base_path} -g='#{album[:gradient]}'"
     `#{m.config["mandelbrot"]} -z=#{next_point[:zoom]} -r=#{next_point[:coords][0]} -i=#{next_point[:coords][1]} -c=true -o=#{album_base_path} -g='#{album[:gradient]}'`.chomp
 end
 
@@ -73,7 +75,8 @@ def create_a_new_album m
     a = create_album
     album_base_path = get_album_base_path(m, a)
     Dir.mkdir(album_base_path) if !Dir.exists?(album_base_path)
-    a[:gradient] = m.generate_gradient
+    a[:gradient] = generate_gradient
+    #a[:gradient] = m.generate_gradient#generate_gradient
 
     real, imaginary, zoom = seed_points_up_to m, 50
 
@@ -195,6 +198,3 @@ next_point = create_point(next_real, next_imaginary, next_zoom)
 
 album[:points] << next_point
 save_album(album)
-
-
-
