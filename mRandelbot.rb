@@ -28,3 +28,133 @@ class Mrandelbot
      end
    end
 end
+
+def generate_image m, next_point, album
+  album_base_path = get_album_base_path(m, album)
+  `#{m.config["mandelbrot"]} -z=#{next_point[:zoom]} -r=#{next_point[:coords][0]} -i=#{next_point[:coords][1]} -c=true -o=#{album_base_path} -g='#{album[:gradient]}'`.chomp
+end
+
+def seed_points_up_to m, seed_until
+  r = -0.75
+  i = 0
+  z = 1
+
+  r, i = get_a_point m, -0.75, 0, 1
+      
+  z *= seed_until + rand() * 4 + 2
+
+  return r,i,z
+end
+
+def get_a_point m, real, imaginary, zoom
+  result = `#{m.config["mandelbrot"]} -o=#{m.base_path} -f=tmp.jpg -z=#{zoom} -r=#{real} -i=#{imaginary}`.chomp
+  pixels = `convert #{result} -canny 0x1+10%+30% -write TXT:- | grep "#FFF" | gshuf -n 1 | awk -F':' '{print $1}'`.chomp
+ 
+  if PIXEL_COORDS_REGEX.match(pixels)
+      parsed_pixels  = pixels.scan(PIXEL_COORDS_REGEX)[0]
+      coords = `#{m.config["mandelbrot"]} -mode=coordsAt -z=#{zoom} -r=#{real} -i=#{imaginary} -x=#{parsed_pixels[0]} -y=#{parsed_pixels[1]}`.chomp
+      if COORDS_REGEX.match(coords)
+          parsed_coords = coords.scan(COORDS_REGEX)[0]
+          return parsed_coords[0], parsed_coords[1] 
+      end
+  end
+
+  return nil, nil
+end
+
+def add_meta_data filename, exiftool, point
+  real, imaginary, zoom = get_point_coordinate_and_zoom(point)
+
+  `#{exiftool} -gps:GPSLongitude="#{real}" #{filename}`
+  `#{exiftool} -gps:GPSLongitudeRef="W" #{filename}` if real.to_f < 0
+  
+  `#{exiftool} -gps:GPSLatitude="#{imaginary}" #{filename}`
+  `#{exiftool} -gps:GPSLatitudeRef="S" file` if imaginary.to_f < 0
+  
+  `#{exiftool} -DigitalZoomRatio="#{zoom}" #{filename}`
+  `#{exiftool} exiftool -delete_original! #{filename}`
+end
+
+def get_next_point album
+  points = album[:points].map{ |p| p.inject({}){|memo,(k,v)| memo[k.to_sym] = v; memo}}
+  return points.keep_if{ |p| p[:generatedAt] == ""}.sort{|p1,p2| p1[:createdAt] <=> p2[:createdAt]}.first
+end
+
+def get_album_base_path m, album
+  album_base_path = File.join(m.base_path, album[:album])
+end
+
+def create_a_new_album m
+  a = create_album
+  album_base_path = get_album_base_path(m, a)
+  Dir.mkdir(album_base_path) if !Dir.exists?(album_base_path)
+  a[:gradient] = generate_gradient
+  #a[:gradient] = m.generate_gradient#generate_gradient
+
+  real, imaginary, zoom = seed_points_up_to m, 50
+
+  a[:points] << create_point(real, imaginary, zoom)
+  
+  a
+end
+
+def create_point(real, imaginary, zoom)
+  return {id: rand(), zoom: zoom, coords: [real, imaginary], published: false, generatedAt: "", createdAt: DateTime.now.strftime("%Y%m%d%H%M%S")}
+end
+
+def update_point album, point
+  new_album = Marshal.load(Marshal.dump(album))
+  points = album[:points].map{ |p| p.inject({}){|memo,(k,v)| memo[k.to_sym] = v; memo}}
+  
+  points = album[:points].keep_if{ |p| p[:id] != point[:id]}
+  points << point
+
+  new_album[:points] = points
+  new_album
+end
+
+def get_an_album m
+  active_albums = get_active_albums
+
+  puts "There are #{active_albums.size} active albums"
+
+  # To keep things interesting, we pick an album at random.
+  # To ensure we don't always just have one album, we also allow
+  # for two extra slots, and if one of those slots is chosen, we
+  # create a new album
+  album_to_use = (rand() * (active_albums.size)).to_i
+
+  if (album_to_use >= active_albums.size)
+      new_album = create_a_new_album(m) 
+      puts "Creating a new album - #{new_album[:album]}"
+      return new_album
+  end
+
+
+  album = get_album(active_albums[album_to_use])
+  puts "Using existing album - #{album[:album]}"
+
+  return album
+end
+
+def get_new_plot_details m, last_plot
+  real, imaginary, zoom = nil
+  if !last_plot
+      real, imaginary, zoom = seed_points_up_to m, 50
+  else
+      r,i,z = get_point_coordinate_and_zoom last_plot
+      
+      real, imaginary = get_a_point m, r, i, z
+      zoom = z.to_f * (rand() * 4 + 2)
+  end
+
+  return real, imaginary, zoom
+end
+
+def get_point_coordinate_and_zoom point
+  real = point[:coords][0]
+  imaginary = point[:coords][1]
+  zoom = point[:zoom]
+
+  return real, imaginary, zoom        
+end
