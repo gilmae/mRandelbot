@@ -31,7 +31,9 @@ end
 
 def generate_image m, next_point, album
   album_base_path = get_album_base_path(m, album)
-  `#{m.config["mandelbrot"]} -z=#{next_point[:zoom]} -r=#{next_point[:coords][0]} -i=#{next_point[:coords][1]} -c=true -o=#{album_base_path} -g='#{album[:gradient]}'`.chomp
+  maxIterations = 2000#* Math.log(next_point["zoom"])
+  p "Generate plot at #{next_point["real"]} + #{next_point["imag"]}, zoomed in to #{next_point["zoom"]}, with max iterations of #{maxIterations}"
+  `#{m.config["mandelbrot"]} -z=#{next_point["zoom"]} -r=#{next_point["real"]} -i=#{next_point["imag"]} -c=true -o=#{album_base_path} -g='#{album["gradient"]}' -m=#{maxIterations}`.chomp
 end
 
 def seed_points_up_to m, seed_until
@@ -47,7 +49,8 @@ def seed_points_up_to m, seed_until
 end
 
 def get_a_point m, real, imaginary, zoom
-  result = `#{m.config["mandelbrot"]} -o=#{m.base_path} -f=tmp.jpg -z=#{zoom} -r=#{real} -i=#{imaginary}`.chomp
+  maxIterations = 2000# *  Math.log(zoom)
+  result = `#{m.config["mandelbrot"]} -o=#{m.base_path} -f=tmp.jpg -z=#{zoom} -r=#{real} -i=#{imaginary} -m=#{maxIterations}`.chomp
   pixels = `convert #{result} -canny 0x1+10%+30% -write TXT:- | grep "#FFF" | gshuf -n 1 | awk -F':' '{print $1}'`.chomp
  
   if PIXEL_COORDS_REGEX.match(pixels)
@@ -75,43 +78,23 @@ def add_meta_data filename, exiftool, point
   `#{exiftool} exiftool -delete_original! #{filename}`
 end
 
-def get_next_point album
-  points = album[:points].map{ |p| p.inject({}){|memo,(k,v)| memo[k.to_sym] = v; memo}}
-  return points.keep_if{ |p| p[:generatedAt] == ""}.sort{|p1,p2| p1[:createdAt] <=> p2[:createdAt]}.first
-end
-
 def get_album_base_path m, album
-  album_base_path = File.join(m.base_path, album[:album])
+  album_base_path = File.join(m.base_path, album["name"])
 end
 
 def create_a_new_album m
   a = create_album
   album_base_path = get_album_base_path(m, a)
   Dir.mkdir(album_base_path) if !Dir.exists?(album_base_path)
-  a[:gradient] = generate_gradient
+  a["gradient"] = generate_gradient
   #a[:gradient] = m.generate_gradient#generate_gradient
-
-  real, imaginary, zoom = seed_points_up_to m, 50
-
-  a[:points] << create_point(real, imaginary, zoom)
-  
-  a
+  save_album a
 end
 
 def create_point(real, imaginary, zoom)
-  return {id: rand(), zoom: zoom, coords: [real, imaginary], published: false, generatedAt: "", createdAt: DateTime.now.strftime("%Y%m%d%H%M%S")}
+  return {"id"=> rand(), "zoom"=> zoom, "real"=> real, "imag" => imaginary, "published"=> false, "generatedAt"=> "", "createdAt"=> DateTime.now.strftime("%Y-%m-%dT%H:%M:%S")}
 end
 
-def update_point album, point
-  new_album = Marshal.load(Marshal.dump(album))
-  points = album[:points].map{ |p| p.inject({}){|memo,(k,v)| memo[k.to_sym] = v; memo}}
-  
-  points = album[:points].keep_if{ |p| p[:id] != point[:id]}
-  points << point
-
-  new_album[:points] = points
-  new_album
-end
 
 def get_an_album m
   active_albums = get_active_albums
@@ -122,17 +105,17 @@ def get_an_album m
   # To ensure we don't always just have one album, we also allow
   # for two extra slots, and if one of those slots is chosen, we
   # create a new album
-  album_to_use = (rand() * (active_albums.size)).to_i
+  album_to_use = (rand() * (active_albums.size + 2)).to_i
 
   if (album_to_use >= active_albums.size)
       new_album = create_a_new_album(m) 
-      puts "Creating a new album - #{new_album[:album]}"
+      puts "Creating a new album - #{new_album["name"]}"
       return new_album
   end
 
 
-  album = get_album(active_albums[album_to_use])
-  puts "Using existing album - #{album[:album]}"
+  album = get_album(active_albums[album_to_use]["rowid"])
+  puts "Using existing album - #{album["name"]}"
 
   return album
 end
@@ -152,9 +135,9 @@ def get_new_plot_details m, last_plot
 end
 
 def get_point_coordinate_and_zoom point
-  real = point[:coords][0]
-  imaginary = point[:coords][1]
-  zoom = point[:zoom]
+  real = point["real"]
+  imaginary = point["imag"]
+  zoom = point["zoom"]
 
   return real, imaginary, zoom        
 end

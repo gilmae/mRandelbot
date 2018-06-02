@@ -57,7 +57,14 @@ m = Mrandelbot.new
 
 album = get_an_album(m)
 
-point_to_generate = get_next_point(album)
+point_to_generate = get_next_point(album).first
+
+if point_to_generate == nil
+    p "seeding new point"
+    real, imaginary, zoom = seed_points_up_to m, 50
+
+    point_to_generate = create_point(real, imaginary, zoom)
+end
 
 filename = generate_image(m, point_to_generate, album)
 
@@ -73,10 +80,10 @@ if m.config["mode"] != "DEV"
 end
 
 # update plot as generated
-point_to_generate[:published] = true
-point_to_generate[:generatedAt] = DateTime.now.strftime("%Y%m%d%H%M%S")
+point_to_generate["published"] = true
+point_to_generate["generatedAt"] = DateTime.now.strftime("%Y%m%d%H%M%S")
 
-album = update_point album, point_to_generate
+point = update_point album, point_to_generate
 
 # Queue up the next plot for this album
 next_real = 0.0
@@ -96,5 +103,6 @@ end
 
 next_point = create_point(next_real, next_imaginary, next_zoom)
 
-album[:points] << next_point
+point = update_point album, next_point
+
 save_album(album)
