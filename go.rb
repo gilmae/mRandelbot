@@ -1,6 +1,6 @@
 require 'twitter'
-require 'YAML'
-require 'JSON'
+require 'yaml'
+require 'json'
 require 'fileutils'
 #require 'aws-sdk'
 require 'date'

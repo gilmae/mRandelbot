@@ -1,6 +1,6 @@
-require 'YAML'
+require 'yaml'
 require 'date'
-require 'JSON'
+require 'json'
 
 class Mrandelbot
    attr_accessor :config, :base_path
