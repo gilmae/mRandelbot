@@ -38,7 +38,7 @@ end
 
 def seed_points_up_to m, seed_until
   r = -0.75
-  i = 0
+  i = 0.000000001
   z = 1
 
   r, i = get_a_point m, -0.75, 0, 1
