@@ -1,6 +1,6 @@
 require "sqlite3"
 module Albums
-  SAVEPATH = File.expand_path(File.dirname(__FILE__)) + "/mRandelbot.db"
+  SAVEPATH = "/mb/mRandelbot.db"
   INIT_ALBUMS = "create table albums (name varchar(40), run_at datetime, gradient varchar(2000), archived bool); "
   INIT_POINTS = "create table points (zoom float,real float,imag float,published bool,generatedAt datetime,createdAt datetime,albumId int);"
 
