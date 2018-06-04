@@ -51,7 +51,7 @@ end
 def get_a_point m, real, imaginary, zoom
   maxIterations = 2000# *  Math.log(zoom)
   result = `#{m.config["mandelbrot"]} -o=#{m.base_path} -f=tmp.jpg -z=#{zoom} -r=#{real} -i=#{imaginary} -m=#{maxIterations}`.chomp
-  pixels = `convert #{result} -canny 0x1+10%+30% -write TXT:- | grep "#FFF" | gshuf -n 1 | awk -F':' '{print $1}'`.chomp
+  pixels = `convert #{result} -canny 0x1+10%+30% -write TXT:- | grep "#FFF" | #{m.config["shuffle_path"]} -n 1 | awk -F':' '{print $1}'`.chomp
  
   if PIXEL_COORDS_REGEX.match(pixels)
       parsed_pixels  = pixels.scan(PIXEL_COORDS_REGEX)[0]
