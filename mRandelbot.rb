@@ -80,6 +80,8 @@ end
 
 def get_album_base_path m, album
   album_base_path = File.join(m.base_path, album["name"])
+  Dir.mkdir(album_base_path) if !Dir.exists?(album_base_path)
+  album_base_path
 end
 
 def create_a_new_album m
@@ -94,7 +96,6 @@ end
 def create_point(real, imaginary, zoom)
   return {"id"=> rand(), "zoom"=> zoom, "real"=> real, "imag" => imaginary, "published"=> false, "generatedAt"=> "", "createdAt"=> DateTime.now.strftime("%Y-%m-%dT%H:%M:%S")}
 end
-
 
 def get_an_album m
   active_albums = get_active_albums
