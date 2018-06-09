@@ -1,6 +1,22 @@
 require "sqlite3"
 module Albums
-  SAVEPATH = "/mb/mRandelbot.db"
+
+  DefaultConfig = Struct.new(:database_path) do
+    def initialize
+      self.database_path = "."
+    end
+  end
+
+  def self.configure
+    @config = DefaultConfig.new
+    yield(@config) if block_given?
+    @config
+  end
+
+  def self.config
+    @config || configure
+  end
+
   INIT_ALBUMS = "create table albums (name varchar(40), run_at datetime, gradient varchar(2000), archived bool); "
   INIT_POINTS = "create table points (zoom float,real float,imag float,published bool,generatedAt datetime,createdAt datetime,albumId int);"
 
@@ -11,8 +27,9 @@ module Albums
   UPDATE_POINT = "update points set zoom = ?,real = ?,imag = ?,generatedAt = ?,createdAt = ?,albumId = ? where rowid = ?"
   
   def get_db
-    requires_init = !File.exists?(SAVEPATH)
-    db = SQLite3::Database.new SAVEPATH
+    savepath = File.join(Albums.config[:database_path], 'mb.db')
+    requires_init = !File.exists?(savepath)
+    db = SQLite3::Database.new savepath
     if requires_init
       db.execute INIT_ALBUMS
       db.execute INIT_POINTS

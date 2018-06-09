@@ -12,6 +12,7 @@ require File.expand_path(File.dirname(__FILE__)) + '/gradient_gen'
 
 include Albums
 
+
 COORDS_REGEX = /([-+]?\d\.\d+(?:[eE][+-]\d{2,3})),\s*([-+]?\d\.\d+(?:[eE][+-]\d{2,3}))/
 PIXEL_COORDS_REGEX = /(\d+),(\d+)/
 
@@ -54,6 +55,11 @@ def publish_to_twitter(m, filename, point)
 end
 
 m = Mrandelbot.new
+
+Albums.configure do |c|
+    c.database_path = m.config["database_path"]
+ end
+ 
 
 album = get_an_album(m)
 
