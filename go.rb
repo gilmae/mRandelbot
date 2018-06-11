@@ -17,6 +17,7 @@ COORDS_REGEX = /([-+]?\d\.\d+(?:[eE][+-]\d{2,3})),\s*([-+]?\d\.\d+(?:[eE][+-]\d{
 PIXEL_COORDS_REGEX = /(\d+),(\d+)/
 
 def publish_to_slack(m, filename, point)
+    return unless ENV["MRANDELBOT_SLACK_POST"]
     Slack.configure do |slack|
         slack.token = ENV["MRANDELBOT_SLACK_API_TOKEN"]
     end
@@ -34,6 +35,7 @@ def publish_to_slack(m, filename, point)
 end
 
 def publish_to_twitter(m, filename, point)
+    return unless ENV["MRANDELBOT_TWITTER_POST"]
     client = Twitter::REST::Client.new do |twitter|
         twitter.consumer_key = ENV["MRANDELBOT_TWITTER_CONSUMER_KEY"]
         twitter.consumer_secret = ENV["MRANDELBOT_TWITTER_CONSUMER_SECRET"]
@@ -76,11 +78,8 @@ add_meta_data filename, point_to_generate
 
 # publish
 slack_file = publish_to_slack(m, filename, point_to_generate)
-
-#if m.config["mode"] != "DEV"
-#    tweet_id = publish_to_twitter m, filename, point_to_generate
-#    point_to_generate[:tweet] = tweet_id
-#end
+tweet_id = publish_to_twitter m, filename, point_to_generate
+point_to_generate[:tweet] = tweet_id
 
 # update plot as generated
 point_to_generate["published"] = true
