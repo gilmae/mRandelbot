@@ -16,11 +16,9 @@ include Albums
 COORDS_REGEX = /([-+]?\d\.\d+(?:[eE][+-]\d{2,3})),\s*([-+]?\d\.\d+(?:[eE][+-]\d{2,3}))/
 PIXEL_COORDS_REGEX = /(\d+),(\d+)/
 
-
-
 def publish_to_slack(m, filename, point)
     Slack.configure do |slack|
-        slack.token = m.config["slack"]["token"]
+        slack.token = ENV["MRANDELBOT_SLACK_API_TOKEN"]
     end
 
     client = Slack::Web::Client.new
@@ -37,10 +35,10 @@ end
 
 def publish_to_twitter(m, filename, point)
     client = Twitter::REST::Client.new do |twitter|
-        twitter.consumer_key = m.config["twitter"]["CONSUMER_KEY"]
-        twitter.consumer_secret = m.config["twitter"]["CONSUMER_SECRET"]
-        twitter.access_token = m.config["twitter"]["OAUTH_TOKEN"]
-        twitter.access_token_secret = m.config["twitter"]["OAUTH_TOKEN_SECRET"]
+        twitter.consumer_key = ENV["MRANDELBOT_TWITTER_CONSUMER_KEY"]
+        twitter.consumer_secret = ENV["MRANDELBOT_TWITTER_CONSUMER_SECRET"]
+        twitter.access_token = ENV["MRANDELBOT_TWITTER_OAUTH_TOKEN"]
+        twitter.access_token_secret = ENV["MRANDELBOT_TWITTER_OAUTH_TOKEN_SECRET"]
     end
 
     real, imaginary, zoom = get_point_coordinate_and_zoom(point)
@@ -57,10 +55,9 @@ end
 m = Mrandelbot.new
 
 Albums.configure do |c|
-    c.database_path = m.config["database_path"]
- end
+    c.database_path = ENV["MRANDELBOT_DATABASE_PATH"]
+end
  
-
 album = get_an_album(m)
 
 point_to_generate = get_next_point(album).first
@@ -75,15 +72,15 @@ end
 filename = generate_image(m, point_to_generate, album)
 
 # apply meta data
-add_meta_data filename, m.config["exiftool_path"], point_to_generate
+add_meta_data filename, point_to_generate
 
 # publish
 slack_file = publish_to_slack(m, filename, point_to_generate)
 
-if m.config["mode"] != "DEV"
-    tweet_id = publish_to_twitter m, filename, point_to_generate
-    point_to_generate[:tweet] = tweet_id
-end
+#if m.config["mode"] != "DEV"
+#    tweet_id = publish_to_twitter m, filename, point_to_generate
+#    point_to_generate[:tweet] = tweet_id
+#end
 
 # update plot as generated
 point_to_generate["published"] = true

@@ -5,35 +5,17 @@ require 'json'
 class Mrandelbot
    attr_accessor :config, :base_path
 
-   def initialize
-     self.read_config
-     @base_path = config["images"]
+   def base_path
+    ENV["MRANDELBOT_IMAGES_PATH"]
    end
-
-
-   def read_config
-     config_file = File.expand_path(File.dirname(__FILE__)) + '/.config'
-
-     if File.exists? config_file
-       _config = File.open(config_file, 'r') do|f|
-         _config = YAML.load(f.read)
-       end
-
-       @config = _config
-     end
-
-     if !_config
-       p "Missing config file"
-       exit
-     end
-   end
+   
 end
 
 def generate_image m, next_point, album
   album_base_path = get_album_base_path(m, album)
   maxIterations = 2000#* Math.log(next_point["zoom"])
   p "Generate plot at #{next_point["real"]} + #{next_point["imag"]}, zoomed in to #{next_point["zoom"]}, with max iterations of #{maxIterations}"
-  `#{m.config["mandelbrot"]} -z=#{next_point["zoom"]} -r=#{next_point["real"]} -i=#{next_point["imag"]} -c=true -o=#{album_base_path} -g='#{album["gradient"]}' -m=#{maxIterations}`.chomp
+  `mandelbrot -z=#{next_point["zoom"]} -r=#{next_point["real"]} -i=#{next_point["imag"]} -c=true -o=#{album_base_path} -g='#{album["gradient"]}' -m=#{maxIterations}`.chomp
 end
 
 def seed_points_up_to m, seed_until
@@ -50,12 +32,12 @@ end
 
 def get_a_point m, real, imaginary, zoom
   maxIterations = 2000# *  Math.log(zoom)
-  result = `#{m.config["mandelbrot"]} -o=#{m.base_path} -f=tmp.jpg -z=#{zoom} -r=#{real} -i=#{imaginary} -m=#{maxIterations}`.chomp
-  pixels = `convert #{result} -canny 0x1+10%+30% -write TXT:- | grep "#FFF" | #{m.config["shuffle_path"]} -n 1 | awk -F':' '{print $1}'`.chomp
+  result = `mandelbrot -o=#{m.base_path} -f=tmp.jpg -z=#{zoom} -r=#{real} -i=#{imaginary} -m=#{maxIterations}`.chomp
+  pixels = `convert #{result} -canny 0x1+10%+30% -write TXT:- | grep "#FFF" | shuf -n 1 | awk -F':' '{print $1}'`.chomp
  
   if PIXEL_COORDS_REGEX.match(pixels)
       parsed_pixels  = pixels.scan(PIXEL_COORDS_REGEX)[0]
-      coords = `#{m.config["mandelbrot"]} -mode=coordsAt -z=#{zoom} -r=#{real} -i=#{imaginary} -x=#{parsed_pixels[0]} -y=#{parsed_pixels[1]}`.chomp
+      coords = `mandelbrot -mode=coordsAt -z=#{zoom} -r=#{real} -i=#{imaginary} -x=#{parsed_pixels[0]} -y=#{parsed_pixels[1]}`.chomp
       if COORDS_REGEX.match(coords)
           parsed_coords = coords.scan(COORDS_REGEX)[0]
           return parsed_coords[0], parsed_coords[1] 
@@ -65,17 +47,17 @@ def get_a_point m, real, imaginary, zoom
   return nil, nil
 end
 
-def add_meta_data filename, exiftool, point
+def add_meta_data filename, point
   real, imaginary, zoom = get_point_coordinate_and_zoom(point)
 
-  `#{exiftool} -gps:GPSLongitude="#{real}" #{filename}`
-  `#{exiftool} -gps:GPSLongitudeRef="W" #{filename}` if real.to_f < 0
+  `exiftool -gps:GPSLongitude="#{real}" #{filename}`
+  `exiftool -gps:GPSLongitudeRef="W" #{filename}` if real.to_f < 0
   
-  `#{exiftool} -gps:GPSLatitude="#{imaginary}" #{filename}`
-  `#{exiftool} -gps:GPSLatitudeRef="S" file` if imaginary.to_f < 0
+  `exiftool -gps:GPSLatitude="#{imaginary}" #{filename}`
+  `exiftool -gps:GPSLatitudeRef="S" file` if imaginary.to_f < 0
   
-  `#{exiftool} -DigitalZoomRatio="#{zoom}" #{filename}`
-  `#{exiftool} exiftool -delete_original! #{filename}`
+  `exiftool -DigitalZoomRatio="#{zoom}" #{filename}`
+  `exiftool exiftool -delete_original! #{filename}`
 end
 
 def get_album_base_path m, album
