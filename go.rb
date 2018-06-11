@@ -16,8 +16,9 @@ include Albums
 COORDS_REGEX = /([-+]?\d\.\d+(?:[eE][+-]\d{2,3})),\s*([-+]?\d\.\d+(?:[eE][+-]\d{2,3}))/
 PIXEL_COORDS_REGEX = /(\d+),(\d+)/
 
-def publish_to_slack(m, filename, point)
+def publish_to_slack(m, filename, point, series)
     return unless ENV["MRANDELBOT_SLACK_POST"]
+    p "Posting to Slack"
     Slack.configure do |slack|
         slack.token = ENV["MRANDELBOT_SLACK_API_TOKEN"]
     end
@@ -29,13 +30,15 @@ def publish_to_slack(m, filename, point)
         channels: '#logs',
         as_user: true,
         file: Faraday::UploadIO.new(filename, 'image/jpeg'),
-        title: "#{real} + #{imaginary}i at zoom #{'%.10e' % zoom}",
+        title: "#{real} + #{imaginary}i at zoom #{'%.10e' % zoom}. jit:#{series}",
         filename: filename,
     )
 end
 
-def publish_to_twitter(m, filename, point)
+def publish_to_twitter(m, filename, point, series)
     return unless ENV["MRANDELBOT_TWITTER_POST"]
+    p "Posting to Twitter"
+
     client = Twitter::REST::Client.new do |twitter|
         twitter.consumer_key = ENV["MRANDELBOT_TWITTER_CONSUMER_KEY"]
         twitter.consumer_secret = ENV["MRANDELBOT_TWITTER_CONSUMER_SECRET"]
@@ -45,9 +48,9 @@ def publish_to_twitter(m, filename, point)
 
     real, imaginary, zoom = get_point_coordinate_and_zoom(point)
 
-    id 
+    id = nil
     File.open(filename, "r") do |file|
-        tweet = client.update_with_media("#{real} + #{imaginary}i at zoom #{'%.10e' % zoom}", file, {:lat=>imaginary, :long=>real, :display_coordinates=>'true'})
+        tweet = client.update_with_media("#{real} + #{imaginary}i at zoom #{'%.10e' % zoom}. jit:#{series}", file, {:lat=>imaginary, :long=>real, :display_coordinates=>'true'})
         id = tweet.id
     end
 
@@ -77,8 +80,8 @@ filename = generate_image(m, point_to_generate, album)
 add_meta_data filename, point_to_generate
 
 # publish
-slack_file = publish_to_slack(m, filename, point_to_generate)
-tweet_id = publish_to_twitter m, filename, point_to_generate
+slack_file = publish_to_slack(m, filename, point_to_generate, album["name"])
+tweet_id = publish_to_twitter m, filename, point_to_generate, album["name"]
 point_to_generate[:tweet] = tweet_id
 
 # update plot as generated
