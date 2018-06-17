@@ -5,3 +5,4 @@ scratch.markdown
 archive
 *.album
 *.db
+.DS_Store
