@@ -27,9 +27,3 @@ WORKDIR mRandelbot
 RUN bundle install
 
 WORKDIR /
-
-
-#RUN git clone https://github.com/gilmae/mRandelbot
-
-#RUN cd mRandelbot && git checkout jit_generator && bundle install
-#ENTRYPOINT ruby mRandelbot/go.rb
