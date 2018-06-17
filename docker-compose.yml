@@ -1,0 +1,9 @@
+version: '3'
+services:
+  mrandelbot:
+    build: .
+    volumes:
+      - mb:/mb
+    env_file: .env
+volumes:
+  mb:
