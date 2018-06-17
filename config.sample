@@ -1,7 +1,6 @@
 ---
 images: LOCATION_OF_IMAGES
 mandelbrot: LOCATION_OF_MANDELBROT_BIN
-gradient: LOCATION_OF_GRADIENT_GENERATION_BIN
 exiftool_path: WHERE_CAN_I_FIND_EXIFTOOL
 mode: DEV|PROD
 depth: NUMBER_OF_ITERATIONS
@@ -10,15 +9,5 @@ twitter:
   OAUTH_TOKEN: YOUR_OAUTH_TOKEN
   OAUTH_TOKEN_SECRET: YOUR_OAUTH_TOKEN_SECRET
   CONSUMER_KEY: YOUR_CONSUMER_KEY
-sqs:
-   region: AWS_REGION
-   access_key: YOUR_SQS_ACCESS_KEY
-   secret_key: YOUR_SQS_SECRET_KEY
-   queue_name: SQS_QUEUE_NAME
-s3:
-  region: AWS_REGION
-  access_key: YOUR_S3_ACCESS_KEY
-  secret_key: YOUR_S3_SECRET_KEY
-  bucket_name: BUCKET_FOR_IMAGES
-  posted_folder: PATH_FOR_POSTED_IMAGES
-  site_bucket_name: PATH_FOR_RESULTS_JSON
+slack:
+  token: SLACK_API_TOKEN

@@ -1,2 +1,8 @@
 .config
+.env
 Gemfile.lock
+scratch.markdown
+archive
+*.album
+*.db
+.DS_Store
