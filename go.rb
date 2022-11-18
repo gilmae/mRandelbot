@@ -1,11 +1,9 @@
-require "twitter"
 require "yaml"
 require "json"
 require "fileutils"
-#require 'aws-sdk'
 require "date"
 require "digest/sha1"
-require "slack-ruby-client"
+require "http"
 require File.expand_path(File.dirname(__FILE__)) + "/mRandelbot"
 require File.expand_path(File.dirname(__FILE__)) + "/albums"
 require File.expand_path(File.dirname(__FILE__)) + "/gradient_gen"
@@ -15,45 +13,38 @@ include Albums
 COORDS_REGEX = /([-+]?\d\.\d+(?:[eE][+-]\d{2,3})),\s*([-+]?\d\.\d+(?:[eE][+-]\d{2,3}))/
 PIXEL_COORDS_REGEX = /(\d+),(\d+)/
 
-def publish_to_slack(m, filename, point, series)
-  return unless ENV["MRANDELBOT_SLACK_POST"]
-  p "Posting to Slack"
-  Slack.configure do |slack|
-    slack.token = ENV["MRANDELBOT_SLACK_API_TOKEN"]
+def publish(filename, point)
+  ctx = OpenSSL::SSL::SSLContext.new
+  if ENV["DISTRUST_MICROPUB_SSL"]
+    ctx.verify_mode = OpenSSL::SSL::VERIFY_NONE
   end
 
-  client = Slack::Web::Client.new
-  real, imaginary, zoom = get_point_coordinate_and_zoom(point)
-
-  return client.files_upload(
-           channels: "#logs",
-           as_user: true,
-           file: Faraday::UploadIO.new(filename, "image/jpeg"),
-           title: "#{real} + #{imaginary}i at zoom #{"%.10e" % zoom}. jit:#{series}",
-           filename: filename,
-         )
-end
-
-def publish_to_twitter(m, filename, point, series)
-  return unless ENV["MRANDELBOT_TWITTER_POST"]
-  p "Posting to Twitter"
-
-  client = Twitter::REST::Client.new do |twitter|
-    twitter.consumer_key = ENV["MRANDELBOT_TWITTER_CONSUMER_KEY"]
-    twitter.consumer_secret = ENV["MRANDELBOT_TWITTER_CONSUMER_SECRET"]
-    twitter.access_token = ENV["MRANDELBOT_TWITTER_OAUTH_TOKEN"]
-    twitter.access_token_secret = ENV["MRANDELBOT_TWITTER_OAUTH_TOKEN_SECRET"]
-  end
+  r = HTTP.auth("Bearer #{ENV["MICROPUB_KEY"]}").post(ENV["MICROPUB_MEDIA"], :ssl_context => ctx, :form => {
+                                                                               :file => HTTP::FormData::File.new(filename),
+                                                                             })
+  return unless r.status == 201
+  fileLocation = r["Location"]
 
   real, imaginary, zoom = get_point_coordinate_and_zoom(point)
-
-  id = nil
-  File.open(filename, "r") do |file|
-    tweet = client.update_with_media("#{real} + #{imaginary}i at zoom #{"%.10e" % zoom}. jit:#{series}", file, { :lat => imaginary, :long => real, :display_coordinates => "true" })
-    id = tweet.id
-  end
-
-  return id
+  r = HTTP.auth("Bearer #{ENV["MICROPUB_KEY"]}").post(ENV["MICROPUB_PUBLISH"], :ssl_context => ctx, :json => {
+                                                                                 :type => [
+                                                                                   "h-entry",
+                                                                                 ],
+                                                                                 :properties => {
+                                                                                   :content => [
+                                                                                     "#{real} + #{imaginary}i at zoom #{"%.10e" % zoom}.",
+                                                                                   ],
+                                                                                   "post-status" => ["published"],
+                                                                                   :photo => [
+                                                                                     {
+                                                                                       :value => fileLocation,
+                                                                                       :alt => "A render of the Mandelbrot Set at #{real} + #{imaginary}i at zoom #{"%.10e" % zoom}",
+                                                                                     },
+                                                                                   ],
+                                                                                   "syndicate-to": (ENV["MICROPUB_SYNDICATE_TO"] || "").split(","),
+                                                                                 },
+                                                                               })
+  p "Published as #{r["Location"]}"
 end
 
 m = Mrandelbot.new
@@ -79,9 +70,7 @@ filename = generate_image(m, point_to_generate, album)
 add_meta_data filename, point_to_generate
 
 # publish
-slack_file = publish_to_slack(m, filename, point_to_generate, album["name"])
-tweet_id = publish_to_twitter m, filename, point_to_generate, album["name"]
-point_to_generate[:tweet] = tweet_id
+publish filename, point_to_generate
 
 # update plot as generated
 point_to_generate["published"] = true
