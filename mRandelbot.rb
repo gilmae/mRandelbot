@@ -12,7 +12,7 @@ end
 
 def generate_image(m, next_point, album)
   album_base_path = get_album_base_path(m, album)
-  maxIterations = 2000 * [1.0, Math.log(next_point["zoom"], 10)].max.to_i
+  maxIterations = get_max_iterations(next_point["zoom"])
   p "Generate plot at #{next_point["real"]} + #{next_point["imag"]}, zoomed in to #{next_point["zoom"]}, with max iterations of #{maxIterations}, in #{album_base_path}"
   `mandelbrot -z=#{next_point["zoom"]} -r=#{next_point["real"]} -i=#{next_point["imag"]} -c=true -o=#{album_base_path} -g='#{album["gradient"]}' -m=#{maxIterations}`.chomp
 end
@@ -30,7 +30,7 @@ def seed_points_up_to(m, seed_until)
 end
 
 def get_a_point(m, real, imaginary, zoom)
-  maxIterations = 2000 * [1.0, Math.log(zoom, 10)].max.to_i
+  maxIterations = get_max_iterations(zoom)
   puts "mandelbrot -o=#{m.base_path} -f=tmp.jpg -z=#{zoom} -r=#{real} -i=#{imaginary} -m=#{maxIterations}"
   result = `mandelbrot -o=#{m.base_path} -f=tmp.jpg -z=#{zoom} -r=#{real} -i=#{imaginary} -m=#{maxIterations}`.chomp
   pixels = `convert #{result} -canny 0x1+10%+30% -write TXT:- | grep "#FFF" | shuf -n 1 | awk -F':' '{print $1}'`.chomp
@@ -122,4 +122,8 @@ def get_point_coordinate_and_zoom(point)
   zoom = point["zoom"]
 
   return real, imaginary, zoom
+end
+
+def get_max_iterations(zoom)
+  2000 + 50 * [0.0, Math.log(zoom, 10)].max.to_i
 end
