@@ -1,6 +1,6 @@
 require "sqlite3"
-module Albums
 
+module Albums
   DefaultConfig = Struct.new(:database_path) do
     def initialize
       self.database_path = "."
@@ -25,9 +25,9 @@ module Albums
 
   INSERT_POINT = "insert into points (zoom,real,imag,generatedAt,createdAt,albumId) values (?,?,?,?,?,?)"
   UPDATE_POINT = "update points set zoom = ?,real = ?,imag = ?,generatedAt = ?,createdAt = ?,albumId = ? where rowid = ?"
-  
+
   def get_db
-    savepath = File.join(Albums.config[:database_path], 'mb.db')
+    savepath = File.join(Albums.config[:database_path], "mb.db")
     requires_init = !File.exists?(savepath)
     db = SQLite3::Database.new savepath
     if requires_init
@@ -43,62 +43,60 @@ module Albums
     db = get_db()
     db.results_as_hash = true
     db.execute("select rowid,name,gradient,archived,run_at from albums where archived = 0")
-
   end
 
-  def get_album id
+  def get_album(id)
     db = get_db()
     db.results_as_hash = true
 
     db.execute("select rowid,name,gradient,archived,run_at from albums where rowid = ?", [id])[0]
   end
 
-  def save_album album
-     if album["rowid"]
+  def save_album(album)
+    if album["rowid"]
       get_db().execute(UPDATE_ALBUM, album["name"], album["run_at"], album["gradient"], album["archived"], album["rowid"])
       get_album album["rowid"]
-     else
+    else
       db = get_db()
-      vars =  [album["name"], album["run_at"], album["gradient"].to_json, album["archived"]]
+      vars = [album["name"], album["run_at"], album["gradient"].to_json, album["archived"]]
 
       db.execute(INSERT_ALBUM, vars)
       get_album db.last_insert_row_id()
     end
   end
 
-  def archive_album album
+  def archive_album(album)
     album["archived"] = true
     save_album album
   end
 
   def create_album
-    {"run_at"=> DateTime.now.strftime("%Y-%m-%dT%H:%M:%S"), 
-      "name"=> DateTime.now.strftime("%Y%m%d%H%M%S"),
-      "archived"=>0,
-      "gradient"=>""
-    }
+    { "run_at" => DateTime.now.strftime("%Y-%m-%dT%H:%M:%S"),
+      "name" => DateTime.now.strftime("%Y%m%d%H%M%S"),
+      "archived" => 0,
+      "gradient" => "" }
   end
 
-  def get_point id
+  def get_point(id)
     db = get_db()
     db.results_as_hash = true
     db.execute("select rowid,zoom,real,imag,published,generatedAt,createdAt,albumId from points where rowid = ?", id)
   end
 
-  def update_point album, point
+  def update_point(album, point)
     point["albumId"] = album["rowid"]
     if point["rowid"]
-      vars = [point["zoom"],point["real"],point["imag"],point["generatedAt"],point["createdAt"],point["albumId"], point["rowid"]]
-      get_db().execute(UPDATE_POINT,vars)
+      vars = [point["zoom"], point["real"], point["imag"], point["generatedAt"], point["createdAt"], point["albumId"], point["rowid"]]
+      get_db().execute(UPDATE_POINT, vars)
       return get_point point["rowid"]
     else
       db = get_db()
-      db.execute(INSERT_POINT, point["zoom"],point["real"],point["imag"],point["generatedAt"],point["createdAt"],point["albumId"])
+      db.execute(INSERT_POINT, point["zoom"], point["real"], point["imag"], point["generatedAt"], point["createdAt"], point["albumId"])
       get_point db.last_insert_row_id()
     end
   end
 
-  def get_next_point album
+  def get_next_point(album)
     db = get_db()
     db.results_as_hash = true
     db.execute("select rowid,zoom,real,imag,published,generatedAt,createdAt,albumId from points where albumId=? and generatedat = ''", album["rowid"])

@@ -14,14 +14,16 @@ COORDS_REGEX = /([-+]?\d\.\d+(?:[eE][+-]\d{2,3})),\s*([-+]?\d\.\d+(?:[eE][+-]\d{
 PIXEL_COORDS_REGEX = /(\d+),(\d+)/
 
 def publish(filename, point)
+  p "Publishing #{filename} to micropub"
+
   ctx = OpenSSL::SSL::SSLContext.new
   if ENV["DISTRUST_MICROPUB_SSL"]
     ctx.verify_mode = OpenSSL::SSL::VERIFY_NONE
   end
-
   r = HTTP.auth("Bearer #{ENV["MICROPUB_KEY"]}").post(ENV["MICROPUB_MEDIA"], :ssl_context => ctx, :form => {
-                                                                               :file => HTTP::FormData::File.new(filename),
+                                                                               :file => HTTP::FormData::File.new(filename, { :content_type => "image/jpeg" }),
                                                                              })
+
   return unless r.status == 201
   fileLocation = r["Location"]
 
@@ -41,7 +43,7 @@ def publish(filename, point)
                                                                                        :alt => "A render of the Mandelbrot Set at #{real} + #{imaginary}i at zoom #{"%.10e" % zoom}",
                                                                                      },
                                                                                    ],
-                                                                                   "syndicate-to": (ENV["MICROPUB_SYNDICATE_TO"] || "").split(","),
+                                                                                   "mp-syndicate-to": (ENV["MICROPUB_SYNDICATE_TO"] || "").split(","),
                                                                                  },
                                                                                })
   p "Published as #{r["Location"]}"
