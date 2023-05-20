@@ -4,6 +4,7 @@ require "fileutils"
 require "date"
 require "digest/sha1"
 require "http"
+require "mastodon"
 require File.expand_path(File.dirname(__FILE__)) + "/mRandelbot"
 require File.expand_path(File.dirname(__FILE__)) + "/albums"
 require File.expand_path(File.dirname(__FILE__)) + "/gradient_gen"
@@ -14,39 +15,18 @@ COORDS_REGEX = /([-+]?\d\.\d+(?:[eE][+-]\d{2,3})),\s*([-+]?\d\.\d+(?:[eE][+-]\d{
 PIXEL_COORDS_REGEX = /(\d+),(\d+)/
 
 def publish(filename, point)
-  p "Publishing #{filename} to micropub"
+  p "Publishing #{filename} to @randommandelbot@botsin.space"
+  client = Mastodon::REST::Client.new(base_url: "https://botsin.space", bearer_token: ENV["MASTODON_TOKEN"])
 
-  ctx = OpenSSL::SSL::SSLContext.new
-  if ENV["DISTRUST_MICROPUB_SSL"]
-    ctx.verify_mode = OpenSSL::SSL::VERIFY_NONE
-  end
-  r = HTTP.auth("Bearer #{ENV["MICROPUB_KEY"]}").post(ENV["MICROPUB_MEDIA"], :ssl_context => ctx, :form => {
-                                                                               :file => HTTP::FormData::File.new(filename, { :content_type => "image/jpeg" }),
-                                                                             })
+  media = client.upload_media(HTTP::FormData::File.new(filename, { :content_type => "image/jpeg" }))
 
-  return unless r.status == 201
-  fileLocation = r["Location"]
+  return if media.nil? || media.id.nil?
+
+  sleep(5)
 
   real, imaginary, zoom = get_point_coordinate_and_zoom(point)
-  r = HTTP.auth("Bearer #{ENV["MICROPUB_KEY"]}").post(ENV["MICROPUB_PUBLISH"], :ssl_context => ctx, :json => {
-                                                                                 :type => [
-                                                                                   "h-entry",
-                                                                                 ],
-                                                                                 :properties => {
-                                                                                   :content => [
-                                                                                     "#{real} + #{imaginary}i at zoom #{"%.10e" % zoom}.",
-                                                                                   ],
-                                                                                   "post-status" => ["published"],
-                                                                                   :photo => [
-                                                                                     {
-                                                                                       :value => fileLocation,
-                                                                                       :alt => "A render of the Mandelbrot Set at #{real} + #{imaginary}i at zoom #{"%.10e" % zoom}",
-                                                                                     },
-                                                                                   ],
-                                                                                   "mp-syndicate-to": (ENV["MICROPUB_SYNDICATE_TO"] || "").split(","),
-                                                                                 },
-                                                                               })
-  p "Published as #{r["Location"]}"
+  toot = client.create_status("#{real} + #{imaginary}i at zoom #{"%.10e" % zoom}.", { :media_ids => [media.id] })
+  p "Published as #{toot.url}"
 end
 
 m = Mrandelbot.new
