@@ -16,15 +16,16 @@ PIXEL_COORDS_REGEX = /(\d+),(\d+)/
 
 def publish(filename, point)
   p "Publishing #{filename} to @randommandelbot@botsin.space"
-  client = Mastodon::REST::Client.new(base_url: "https://botsin.space", bearer_token: ENV["MASTODON_TOKEN"])
+  client = Mastodon::REST::Client.new(base_url: "https://botsin.space", bearer_token: ENV["MASTODON_TOKEN"], timeout: {read:10})
+  real, imaginary, zoom = get_point_coordinate_and_zoom(point)
 
-  media = client.upload_media(HTTP::FormData::File.new(filename, { :content_type => "image/jpeg" }))
+  media = client.upload_media(HTTP::FormData::File.new(filename, { :content_type => "image/jpeg" }),
+                              { :description => "A render of the mandelbrot set using randomised colours. The centre point is #{real} + #{imaginary}i and we are zoomed to #{"%.10e" % zoom} magnitude." })
 
   return if media.nil? || media.id.nil?
 
   sleep(5)
 
-  real, imaginary, zoom = get_point_coordinate_and_zoom(point)
   toot = client.create_status("#{real} + #{imaginary}i at zoom #{"%.10e" % zoom}.", { :media_ids => [media.id] })
   p "Published as #{toot.url}"
 end
